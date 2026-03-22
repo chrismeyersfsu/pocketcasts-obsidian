@@ -9,7 +9,7 @@ import {
 	requestUrl,
 } from "obsidian";
 
-const VIEW_TYPE_POCKETCASTS = "pocketcasts-history";
+const VIEW_TYPE_POCKETCASTS = "pocketsync-history";
 const API_BASE = "https://api.pocketcasts.com";
 const MIN_LISTEN_SECONDS = 5 * 60; // 5 minutes
 

@@ -1,5 +1,5 @@
 {
-  "name": "pocketcasts-obsidian",
+  "name": "pocketsync",
   "version": "0.1.0",
   "description": "Sync Pocket Casts listening history to Obsidian",
   "main": "main.js",
