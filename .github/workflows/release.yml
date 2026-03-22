@@ -42,11 +42,10 @@ jobs:
           git push --follow-tags
 
       - name: Create release
-        uses: softprops/action-gh-release@v2.6.1
-        with:
-          tag_name: ${{ github.event.inputs.version }}
-          name: ${{ github.event.inputs.version }}
-          generate_release_notes: true
-          files: |
-            main.js
-            manifest.json
+        run: |
+          gh release create ${{ github.event.inputs.version }} \
+            --title "${{ github.event.inputs.version }}" \
+            --generate-notes \
+            main.js manifest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
