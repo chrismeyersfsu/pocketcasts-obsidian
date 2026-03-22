@@ -1,6 +1,7 @@
 import {
 	App,
 	ItemView,
+	Modal,
 	Notice,
 	Plugin,
 	PluginSettingTab,
@@ -247,6 +248,51 @@ class PocketCastsView extends ItemView {
 	}
 }
 
+// ── File Exists Modal ─────────────────────────────────────────────────────────
+
+type FileExistsChoice = "open" | "overwrite" | "cancel";
+
+class FileExistsModal extends Modal {
+	private resolve: (choice: FileExistsChoice) => void;
+	private filename: string;
+	private resolved = false;
+
+	constructor(app: App, filename: string, resolve: (choice: FileExistsChoice) => void) {
+		super(app);
+		this.filename = filename;
+		this.resolve = resolve;
+	}
+
+	private pick(choice: FileExistsChoice) {
+		if (this.resolved) return;
+		this.resolved = true;
+		this.resolve(choice);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.createEl("h3", { text: "Note already exists" });
+		contentEl.createEl("p", { text: `"${this.filename}" already exists. What would you like to do?` });
+
+		const btnRow = contentEl.createDiv({ cls: "pocketcasts-modal-buttons" });
+
+		const openBtn = btnRow.createEl("button", { text: "Open existing" });
+		openBtn.addEventListener("click", () => { this.pick("open"); this.close(); });
+
+		const overwriteBtn = btnRow.createEl("button", { text: "Overwrite" });
+		overwriteBtn.addClass("mod-warning");
+		overwriteBtn.addEventListener("click", () => { this.pick("overwrite"); this.close(); });
+
+		const cancelBtn = btnRow.createEl("button", { text: "Cancel" });
+		cancelBtn.addEventListener("click", () => { this.pick("cancel"); this.close(); });
+	}
+
+	onClose() {
+		this.pick("cancel");
+		this.contentEl.empty();
+	}
+}
+
 // ── Settings Tab ─────────────────────────────────────────────────────────────
 
 class PocketCastsSettingTab extends PluginSettingTab {
@@ -424,9 +470,16 @@ export default class PocketCastsPlugin extends Plugin {
 
 		const existing = this.app.vault.getAbstractFileByPath(fullPath);
 		if (existing instanceof TFile) {
-			await this.app.workspace.openLinkText(fullPath, "", false);
-			new Notice(`Opened existing note: ${filename}`);
-			return;
+			const choice = await new Promise<FileExistsChoice>(resolve =>
+				new FileExistsModal(this.app, filename, resolve).open()
+			);
+			if (choice === "cancel") return;
+			if (choice === "open") {
+				await this.app.workspace.openLinkText(fullPath, "", false);
+				return;
+			}
+			// overwrite: delete and recreate below
+			await this.app.vault.delete(existing);
 		}
 
 		const frontmatter = this.buildFrontmatter(ep);
@@ -633,6 +686,12 @@ export default class PocketCastsPlugin extends Plugin {
 	background: var(--interactive-accent);
 	border-radius: 2px;
 	transition: width 0.3s ease;
+}
+.pocketcasts-modal-buttons {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+	margin-top: 16px;
 }
 `;
 		document.head.appendChild(style);
