@@ -43,6 +43,14 @@ interface Episode {
 	playingStatus: number;  // 3 = completed
 	publishedAt: string;
 	podcastUuid: string;
+	url: string;            // audio file URL
+	episodeDescription: string;
+	episodeUrl: string;     // episode web page URL
+	imageUrl: string;
+	fileType: string;
+	fileSize: number;       // bytes
+	season: number;
+	number: number;         // episode number
 }
 
 function isConsidered(ep: Episode): boolean {
@@ -102,6 +110,14 @@ async function apiFetchHistory(token: string): Promise<Episode[]> {
 		playingStatus: e.playingStatus ?? 0,
 		publishedAt: e.publishedAt ?? "",
 		podcastUuid: e.podcastUuid ?? "",
+		url: e.url ?? "",
+		episodeDescription: e.episodeDescription ?? e.description ?? "",
+		episodeUrl: e.episodeUrl ?? e.url_meta ?? "",
+		imageUrl: e.imageUrl ?? e.image ?? "",
+		fileType: e.fileType ?? "",
+		fileSize: e.fileSize ?? 0,
+		season: e.season ?? 0,
+		number: e.number ?? 0,
 	}));
 	return episodes;
 }
@@ -532,7 +548,7 @@ export default class PocketCastsPlugin extends Plugin {
 	private buildFrontmatter(ep: Episode): string {
 		const esc = (s: string) => s.replace(/"/g, '\\"');
 		const date = ep.publishedAt ? new Date(ep.publishedAt).toISOString().split("T")[0] : "";
-		return [
+		const lines = [
 			"---",
 			`podcast_title: "${esc(ep.podcastTitle)}"`,
 			`episode_title: "${esc(ep.title)}"`,
@@ -547,29 +563,41 @@ export default class PocketCastsPlugin extends Plugin {
 			`progress_percent: ${progressPct(ep)}`,
 			`completed: ${ep.playingStatus === 3}`,
 			`playing_status: ${ep.playingStatus}`,
-			`tags:\n  - podcast`,
-			"---",
-			"",
-		].join("\n");
+		];
+		if (ep.url)          lines.push(`audio_url: "${esc(ep.url)}"`);
+		if (ep.episodeUrl)   lines.push(`episode_url: "${esc(ep.episodeUrl)}"`);
+		if (ep.imageUrl)     lines.push(`image_url: "${esc(ep.imageUrl)}"`);
+		if (ep.fileType)     lines.push(`file_type: "${esc(ep.fileType)}"`);
+		if (ep.fileSize)     lines.push(`file_size_bytes: ${ep.fileSize}`);
+		if (ep.season)       lines.push(`season: ${ep.season}`);
+		if (ep.number)       lines.push(`episode_number: ${ep.number}`);
+		lines.push(`tags:\n  - podcast`, "---", "");
+		return lines.join("\n");
 	}
 
 	private buildBasicContent(ep: Episode): string {
 		const date = ep.publishedAt ? formatDate(ep.publishedAt) : "";
 		const status = ep.playingStatus === 3 ? "Completed" : "In Progress";
-		return [
+		const lines: (string | null)[] = [
 			`# ${ep.title}`,
 			"",
+			`> [!info] Episode Details`,
 			`> **Podcast**: ${ep.podcastTitle}`,
 			ep.author ? `> **Author**: ${ep.author}` : null,
 			date ? `> **Published**: ${date}` : null,
 			`> **Duration**: ${formatDuration(ep.duration)}`,
 			`> **Progress**: ${formatDuration(ep.playedUpTo)} / ${formatDuration(ep.duration)} (${progressPct(ep)}%)`,
 			`> **Status**: ${status}`,
+			ep.url ? `> **Audio**: [Listen](${ep.url})` : null,
+			ep.episodeUrl ? `> **Episode page**: ${ep.episodeUrl}` : null,
+			ep.season || ep.number ? `> **Episode**: ${[ep.season ? `S${ep.season}` : null, ep.number ? `E${ep.number}` : null].filter(Boolean).join("")}` : null,
 			"",
-			"## Notes",
-			"",
-			"",
-		].filter((l): l is string => l !== null).join("\n");
+		];
+		if (ep.episodeDescription) {
+			lines.push("## Description", "", ep.episodeDescription.trim(), "");
+		}
+		lines.push("## Notes", "", "");
+		return lines.filter((l): l is string => l !== null).join("\n");
 	}
 
 	private addStyles() {
