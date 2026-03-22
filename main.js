@@ -118,10 +118,12 @@ async function apiFetchShowNotes(episodeUuid) {
       url: `https://cache.pocketcasts.com/episode/show_notes/${episodeUuid}`,
       method: "GET"
     });
+    console.log(`PocketSync show_notes status=${resp.status}`, resp.json);
     if (resp.status !== 200)
       return "";
     return (_a = resp.json.show_notes) != null ? _a : "";
   } catch (e) {
+    console.error("PocketSync show_notes fetch error", episodeUuid, e);
     return "";
   }
 }
@@ -469,6 +471,8 @@ var PocketCastsPlugin = class extends import_obsidian.Plugin {
       lines.push(`season: ${ep.episodeSeason}`);
     if (ep.episodeNumber)
       lines.push(`episode_number: ${ep.episodeNumber}`);
+    lines.push(showNotes ? `description: |
+  ${showNotes.trim().replace(/\n/g, "\n  ")}` : `description: ""`);
     lines.push(`tags:
   - podcast`, "---", "");
     return lines.join("\n");

@@ -58,5 +58,5 @@ tags:
 
 ## Description
 
-<!-- Show notes will appear here when using the default note format -->
+<% tp.frontmatter.description || "" %>
 

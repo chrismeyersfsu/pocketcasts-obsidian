@@ -130,9 +130,11 @@ async function apiFetchShowNotes(episodeUuid: string): Promise<string> {
 			url: `https://cache.pocketcasts.com/episode/show_notes/${episodeUuid}`,
 			method: "GET",
 		});
+		console.log(`PocketSync show_notes status=${resp.status}`, resp.json);
 		if (resp.status !== 200) return "";
 		return resp.json.show_notes ?? "";
-	} catch {
+	} catch (e) {
+		console.error("PocketSync show_notes fetch error", episodeUuid, e);
 		return "";
 	}
 }
@@ -595,6 +597,9 @@ export default class PocketCastsPlugin extends Plugin {
 		if (ep.episodeType)     lines.push(`episode_type: "${ep.episodeType}"`);
 		if (ep.episodeSeason)   lines.push(`season: ${ep.episodeSeason}`);
 		if (ep.episodeNumber)   lines.push(`episode_number: ${ep.episodeNumber}`);
+		lines.push(showNotes
+			? `description: |\n  ${showNotes.trim().replace(/\n/g, "\n  ")}`
+			: `description: ""`);
 		lines.push(`tags:\n  - podcast`, "---", "");
 		return lines.join("\n");
 	}
