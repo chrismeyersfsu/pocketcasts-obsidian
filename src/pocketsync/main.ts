@@ -37,20 +37,21 @@ interface Episode {
 	uuid: string;
 	title: string;
 	podcastTitle: string;
+	podcastUuid: string;
+	podcastSlug: string;
+	slug: string;
 	author: string;
 	duration: number;       // total seconds
 	playedUpTo: number;     // seconds listened
 	playingStatus: number;  // 3 = completed
-	publishedAt: string;
-	podcastUuid: string;
+	published: string;
 	url: string;            // audio file URL
-	episodeDescription: string;
-	episodeUrl: string;     // episode web page URL
-	imageUrl: string;
 	fileType: string;
-	fileSize: number;       // bytes
-	season: number;
-	number: number;         // episode number
+	fileSize: number;       // bytes (field: size)
+	episodeSeason: number;
+	episodeNumber: number;
+	episodeType: string;    // "full" | "trailer" | "bonus"
+	starred: boolean;
 }
 
 function isConsidered(ep: Episode): boolean {
@@ -103,23 +104,41 @@ async function apiFetchHistory(token: string): Promise<Episode[]> {
 	const episodes: Episode[] = (resp.json.episodes ?? []).map((e: any) => ({
 		uuid: e.uuid,
 		title: e.title ?? "Untitled",
-		podcastTitle: e.podcastTitle ?? e.podcast ?? "Unknown Podcast",
+		podcastTitle: e.podcastTitle ?? "Unknown Podcast",
+		podcastUuid: e.podcastUuid ?? "",
+		podcastSlug: e.podcastSlug ?? "",
+		slug: e.slug ?? "",
 		author: e.author ?? "",
 		duration: e.duration ?? 0,
 		playedUpTo: e.playedUpTo ?? 0,
 		playingStatus: e.playingStatus ?? 0,
-		publishedAt: e.publishedAt ?? "",
-		podcastUuid: e.podcastUuid ?? "",
+		published: e.published ?? "",
 		url: e.url ?? "",
-		episodeDescription: e.episodeDescription ?? e.description ?? "",
-		episodeUrl: e.episodeUrl ?? e.url_meta ?? "",
-		imageUrl: e.imageUrl ?? e.image ?? "",
 		fileType: e.fileType ?? "",
-		fileSize: e.fileSize ?? 0,
-		season: e.season ?? 0,
-		number: e.number ?? 0,
+		fileSize: Number(e.size ?? 0),
+		episodeSeason: e.episodeSeason ?? 0,
+		episodeNumber: e.episodeNumber ?? 0,
+		episodeType: e.episodeType ?? "",
+		starred: e.starred ?? false,
 	}));
 	return episodes;
+}
+
+async function apiFetchShowNotes(episodeUuid: string): Promise<string> {
+	try {
+		const resp = await requestUrl({
+			url: `https://cache.pocketcasts.com/episode/show_notes/${episodeUuid}`,
+			method: "GET",
+		});
+		if (resp.status !== 200) return "";
+		return resp.json.show_notes ?? "";
+	} catch {
+		return "";
+	}
+}
+
+function podcastImageUrl(podcastUuid: string, size = 280): string {
+	return `https://static.pocketcasts.com/discover/images/${podcastUuid}/artwork/${size}x${size}.jpg`;
 }
 
 // ── View ─────────────────────────────────────────────────────────────────────
@@ -249,8 +268,8 @@ class PocketCastsView extends ItemView {
 		meta.createEl("span", { text: "📝", cls: "pocketcasts-note-icon", title: "Create note" });
 
 		const bottomRow = card.createDiv({ cls: "pocketcasts-card-bottom" });
-		if (ep.publishedAt) {
-			bottomRow.createEl("span", { text: formatDate(ep.publishedAt), cls: "pocketcasts-date" });
+		if (ep.published) {
+			bottomRow.createEl("span", { text: formatDate(ep.published), cls: "pocketcasts-date" });
 		}
 		bottomRow.createEl("span", {
 			text: `${formatDuration(ep.playedUpTo)} / ${formatDuration(ep.duration)}`,
@@ -498,7 +517,8 @@ export default class PocketCastsPlugin extends Plugin {
 			await this.app.vault.delete(existing);
 		}
 
-		const frontmatter = this.buildFrontmatter(ep);
+		const showNotes = await apiFetchShowNotes(ep.uuid);
+		const frontmatter = this.buildFrontmatter(ep, showNotes);
 		const templaterPlugin = (this.app as any).plugins?.plugins?.["templater-obsidian"];
 		const templatePath = this.settings.templaterFile
 			? (this.settings.templaterFile.endsWith(".md")
@@ -521,7 +541,7 @@ export default class PocketCastsPlugin extends Plugin {
 			}
 			await this.app.workspace.openLinkText(fullPath, "", false);
 		} else {
-			const content = frontmatter + this.buildBasicContent(ep);
+			const content = frontmatter + this.buildBasicContent(ep, showNotes);
 			await this.app.vault.create(fullPath, content);
 			await this.app.workspace.openLinkText(fullPath, "", false);
 		}
@@ -545,9 +565,10 @@ export default class PocketCastsPlugin extends Plugin {
 		}
 	}
 
-	private buildFrontmatter(ep: Episode): string {
+	private buildFrontmatter(ep: Episode, showNotes: string): string {
 		const esc = (s: string) => s.replace(/"/g, '\\"');
-		const date = ep.publishedAt ? new Date(ep.publishedAt).toISOString().split("T")[0] : "";
+		const date = ep.published ? new Date(ep.published).toISOString().split("T")[0] : "";
+		const imageUrl = podcastImageUrl(ep.podcastUuid);
 		const lines = [
 			"---",
 			`podcast_title: "${esc(ep.podcastTitle)}"`,
@@ -555,6 +576,8 @@ export default class PocketCastsPlugin extends Plugin {
 			`author: "${esc(ep.author)}"`,
 			`episode_uuid: "${ep.uuid}"`,
 			`podcast_uuid: "${ep.podcastUuid}"`,
+			`podcast_slug: "${ep.podcastSlug}"`,
+			`episode_slug: "${ep.slug}"`,
 			`published_date: ${date || '""'}`,
 			`duration_seconds: ${ep.duration}`,
 			`duration_formatted: "${formatDuration(ep.duration)}"`,
@@ -563,38 +586,47 @@ export default class PocketCastsPlugin extends Plugin {
 			`progress_percent: ${progressPct(ep)}`,
 			`completed: ${ep.playingStatus === 3}`,
 			`playing_status: ${ep.playingStatus}`,
+			`starred: ${ep.starred}`,
+			`audio_url: "${esc(ep.url)}"`,
+			`image_url: "${imageUrl}"`,
 		];
-		if (ep.url)          lines.push(`audio_url: "${esc(ep.url)}"`);
-		if (ep.episodeUrl)   lines.push(`episode_url: "${esc(ep.episodeUrl)}"`);
-		if (ep.imageUrl)     lines.push(`image_url: "${esc(ep.imageUrl)}"`);
-		if (ep.fileType)     lines.push(`file_type: "${esc(ep.fileType)}"`);
-		if (ep.fileSize)     lines.push(`file_size_bytes: ${ep.fileSize}`);
-		if (ep.season)       lines.push(`season: ${ep.season}`);
-		if (ep.number)       lines.push(`episode_number: ${ep.number}`);
+		if (ep.fileType)        lines.push(`file_type: "${ep.fileType}"`);
+		if (ep.fileSize)        lines.push(`file_size_bytes: ${ep.fileSize}`);
+		if (ep.episodeType)     lines.push(`episode_type: "${ep.episodeType}"`);
+		if (ep.episodeSeason)   lines.push(`season: ${ep.episodeSeason}`);
+		if (ep.episodeNumber)   lines.push(`episode_number: ${ep.episodeNumber}`);
 		lines.push(`tags:\n  - podcast`, "---", "");
 		return lines.join("\n");
 	}
 
-	private buildBasicContent(ep: Episode): string {
-		const date = ep.publishedAt ? formatDate(ep.publishedAt) : "";
+	private buildBasicContent(ep: Episode, showNotes: string): string {
+		const date = ep.published ? formatDate(ep.published) : "";
 		const status = ep.playingStatus === 3 ? "Completed" : "In Progress";
+		const epLabel = [
+			ep.episodeSeason ? `S${ep.episodeSeason}` : null,
+			ep.episodeNumber ? `E${ep.episodeNumber}` : null,
+		].filter(Boolean).join("");
+		const imageUrl = podcastImageUrl(ep.podcastUuid);
 		const lines: (string | null)[] = [
 			`# ${ep.title}`,
 			"",
+			`![Podcast artwork](${imageUrl})`,
+			"",
 			`> [!info] Episode Details`,
 			`> **Podcast**: ${ep.podcastTitle}`,
-			ep.author ? `> **Author**: ${ep.author}` : null,
-			date ? `> **Published**: ${date}` : null,
+			ep.author    ? `> **Author**: ${ep.author}` : null,
+			date         ? `> **Published**: ${date}` : null,
+			epLabel      ? `> **Episode**: ${epLabel}` : null,
+			ep.episodeType ? `> **Type**: ${ep.episodeType}` : null,
 			`> **Duration**: ${formatDuration(ep.duration)}`,
 			`> **Progress**: ${formatDuration(ep.playedUpTo)} / ${formatDuration(ep.duration)} (${progressPct(ep)}%)`,
 			`> **Status**: ${status}`,
-			ep.url ? `> **Audio**: [Listen](${ep.url})` : null,
-			ep.episodeUrl ? `> **Episode page**: ${ep.episodeUrl}` : null,
-			ep.season || ep.number ? `> **Episode**: ${[ep.season ? `S${ep.season}` : null, ep.number ? `E${ep.number}` : null].filter(Boolean).join("")}` : null,
+			ep.starred   ? `> **Starred**: yes` : null,
+			ep.url       ? `> **Audio**: [Listen](${ep.url})` : null,
 			"",
 		];
-		if (ep.episodeDescription) {
-			lines.push("## Description", "", ep.episodeDescription.trim(), "");
+		if (showNotes) {
+			lines.push("## Description", "", showNotes.trim(), "");
 		}
 		lines.push("## Notes", "", "");
 		return lines.filter((l): l is string => l !== null).join("\n");
