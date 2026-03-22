@@ -5,6 +5,7 @@ import {
 	Plugin,
 	PluginSettingTab,
 	Setting,
+	TFile,
 	WorkspaceLeaf,
 	requestUrl,
 } from "obsidian";
@@ -17,12 +18,18 @@ interface PocketCastsSettings {
 	email: string;
 	password: string;
 	token: string;
+	notePath: string;
+	noteFilename: string;
+	templaterFile: string;
 }
 
 const DEFAULT_SETTINGS: PocketCastsSettings = {
 	email: "",
 	password: "",
 	token: "",
+	notePath: "personal/podcasts",
+	noteFilename: "{{podcast_name}} - {{podcast_episode}}.md",
+	templaterFile: "_templater_templates/Podcast",
 };
 
 interface Episode {
@@ -206,6 +213,8 @@ class PocketCastsView extends ItemView {
 
 	private renderEpisode(container: HTMLElement, ep: Episode) {
 		const card = container.createDiv({ cls: "pocketcasts-card" });
+		card.title = "Click to create a note for this episode";
+		card.addEventListener("click", () => this.plugin.createEpisodeNote(ep));
 
 		const topRow = card.createDiv({ cls: "pocketcasts-card-top" });
 
@@ -220,6 +229,7 @@ class PocketCastsView extends ItemView {
 			text: badge,
 			cls: pct >= 100 ? "pocketcasts-badge pocketcasts-badge-done" : "pocketcasts-badge",
 		});
+		meta.createEl("span", { text: "📝", cls: "pocketcasts-note-icon", title: "Create note" });
 
 		const bottomRow = card.createDiv({ cls: "pocketcasts-card-bottom" });
 		if (ep.publishedAt) {
@@ -280,6 +290,51 @@ class PocketCastsSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
+
+		containerEl.createEl("h3", { text: "Note Creation" });
+
+		new Setting(containerEl)
+			.setName("Note path")
+			.setDesc("Folder where podcast episode notes will be created.")
+			.addText(text =>
+				text
+					.setPlaceholder("personal/podcasts")
+					.setValue(this.plugin.settings.notePath)
+					.onChange(async value => {
+						this.plugin.settings.notePath = value.trim();
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Note filename")
+			.setDesc("Filename template. Use {{podcast_name}} and {{podcast_episode}} as placeholders.")
+			.addText(text =>
+				text
+					.setPlaceholder("{{podcast_name}} - {{podcast_episode}}.md")
+					.setValue(this.plugin.settings.noteFilename)
+					.onChange(async value => {
+						this.plugin.settings.noteFilename = value.trim();
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Templater template file")
+			.setDesc(
+				"Path to a Templater template file (without .md). " +
+				"All episode metadata is available via tp.frontmatter in the template. " +
+				"Leave empty to use the built-in default format."
+			)
+			.addText(text =>
+				text
+					.setPlaceholder("_templater_templates/Podcast")
+					.setValue(this.plugin.settings.templaterFile)
+					.onChange(async value => {
+						this.plugin.settings.templaterFile = value.trim();
+						await this.plugin.saveSettings();
+					})
+			);
 
 		new Setting(containerEl)
 			.setName("Open listening history")
@@ -354,6 +409,116 @@ export default class PocketCastsPlugin extends Plugin {
 		this.app.workspace.revealLeaf(leaf);
 	}
 
+	async createEpisodeNote(ep: Episode): Promise<void> {
+		const sanitize = (s: string) => s.replace(/[\\/:*?"<>|#^[\]]/g, "-").trim();
+
+		const rawFilename = this.settings.noteFilename
+			.replace("{{podcast_name}}", sanitize(ep.podcastTitle))
+			.replace("{{podcast_episode}}", sanitize(ep.title));
+		const filename = rawFilename.endsWith(".md") ? rawFilename : rawFilename + ".md";
+
+		const folderPath = this.settings.notePath.replace(/\/+$/, "");
+		const fullPath = folderPath ? `${folderPath}/${filename}` : filename;
+
+		await this.ensureFolder(folderPath);
+
+		const existing = this.app.vault.getAbstractFileByPath(fullPath);
+		if (existing instanceof TFile) {
+			await this.app.workspace.openLinkText(fullPath, "", false);
+			new Notice(`Opened existing note: ${filename}`);
+			return;
+		}
+
+		const frontmatter = this.buildFrontmatter(ep);
+		const templaterPlugin = (this.app as any).plugins?.plugins?.["templater-obsidian"];
+		const templatePath = this.settings.templaterFile
+			? (this.settings.templaterFile.endsWith(".md")
+				? this.settings.templaterFile
+				: this.settings.templaterFile + ".md")
+			: null;
+		const templateFile = templatePath
+			? this.app.vault.getAbstractFileByPath(templatePath)
+			: null;
+
+		if (templaterPlugin && templateFile instanceof TFile) {
+			const noteFile = await this.app.vault.create(fullPath, frontmatter);
+			// Wait for metadata cache to index the frontmatter
+			await new Promise(resolve => setTimeout(resolve, 500));
+			try {
+				await templaterPlugin.templater.write_template_to_file(templateFile, noteFile);
+			} catch (e) {
+				console.error("PocketSync: Templater error", e);
+				new Notice("Templater failed to apply template. Note created with frontmatter only.");
+			}
+			await this.app.workspace.openLinkText(fullPath, "", false);
+		} else {
+			const content = frontmatter + this.buildBasicContent(ep);
+			await this.app.vault.create(fullPath, content);
+			await this.app.workspace.openLinkText(fullPath, "", false);
+		}
+
+		new Notice(`Created podcast note: ${filename}`);
+	}
+
+	private async ensureFolder(folderPath: string): Promise<void> {
+		if (!folderPath) return;
+		const parts = folderPath.split("/").filter(Boolean);
+		let current = "";
+		for (const part of parts) {
+			current = current ? `${current}/${part}` : part;
+			if (!this.app.vault.getAbstractFileByPath(current)) {
+				try {
+					await this.app.vault.createFolder(current);
+				} catch {
+					// Folder may have been created concurrently
+				}
+			}
+		}
+	}
+
+	private buildFrontmatter(ep: Episode): string {
+		const esc = (s: string) => s.replace(/"/g, '\\"');
+		const date = ep.publishedAt ? new Date(ep.publishedAt).toISOString().split("T")[0] : "";
+		return [
+			"---",
+			`podcast_title: "${esc(ep.podcastTitle)}"`,
+			`episode_title: "${esc(ep.title)}"`,
+			`author: "${esc(ep.author)}"`,
+			`episode_uuid: "${ep.uuid}"`,
+			`podcast_uuid: "${ep.podcastUuid}"`,
+			`published_date: ${date || '""'}`,
+			`duration_seconds: ${ep.duration}`,
+			`duration_formatted: "${formatDuration(ep.duration)}"`,
+			`played_up_to_seconds: ${ep.playedUpTo}`,
+			`played_up_to_formatted: "${formatDuration(ep.playedUpTo)}"`,
+			`progress_percent: ${progressPct(ep)}`,
+			`completed: ${ep.playingStatus === 3}`,
+			`playing_status: ${ep.playingStatus}`,
+			`tags:\n  - podcast`,
+			"---",
+			"",
+		].join("\n");
+	}
+
+	private buildBasicContent(ep: Episode): string {
+		const date = ep.publishedAt ? formatDate(ep.publishedAt) : "";
+		const status = ep.playingStatus === 3 ? "Completed" : "In Progress";
+		return [
+			`# ${ep.title}`,
+			"",
+			`> **Podcast**: ${ep.podcastTitle}`,
+			ep.author ? `> **Author**: ${ep.author}` : null,
+			date ? `> **Published**: ${date}` : null,
+			`> **Duration**: ${formatDuration(ep.duration)}`,
+			`> **Progress**: ${formatDuration(ep.playedUpTo)} / ${formatDuration(ep.duration)} (${progressPct(ep)}%)`,
+			`> **Status**: ${status}`,
+			"",
+			"## Notes",
+			"",
+			"",
+		].filter((l): l is string => l !== null).join("\n");
+	}
+
 	private addStyles() {
 		const style = document.createElement("style");
 		style.id = "pocketcasts-styles";
@@ -396,9 +561,18 @@ export default class PocketCastsPlugin extends Plugin {
 .pocketcasts-card {
 	padding: 10px 16px 8px;
 	border-bottom: 1px solid var(--background-modifier-border);
+	cursor: pointer;
 }
 .pocketcasts-card:hover {
 	background: var(--background-secondary-alt);
+}
+.pocketcasts-note-icon {
+	margin-left: 6px;
+	font-size: 0.85em;
+	opacity: 0.4;
+}
+.pocketcasts-card:hover .pocketcasts-note-icon {
+	opacity: 1;
 }
 .pocketcasts-card-top {
 	display: flex;
