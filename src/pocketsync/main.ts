@@ -378,7 +378,7 @@ class PocketCastsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Note path")
-			.setDesc("Folder where podcast episode notes will be created.")
+			.setDesc("Folder where podcast episode notes will be created. Use {{podcast_name}} and {{podcast_episode}} as placeholders. Directories will be created automatically.")
 			.addText(text =>
 				text
 					.setPlaceholder("personal/podcasts")
@@ -500,7 +500,10 @@ export default class PocketCastsPlugin extends Plugin {
 			.replace("{{podcast_episode}}", sanitize(ep.title));
 		const filename = rawFilename.endsWith(".md") ? rawFilename : rawFilename + ".md";
 
-		const folderPath = this.settings.notePath.replace(/\/+$/, "");
+		const folderPath = this.settings.notePath
+			.replace("{{podcast_name}}", sanitize(ep.podcastTitle))
+			.replace("{{podcast_episode}}", sanitize(ep.title))
+			.replace(/\/+$/, "");
 		const fullPath = folderPath ? `${folderPath}/${filename}` : filename;
 
 		await this.ensureFolder(folderPath);

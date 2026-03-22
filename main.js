@@ -305,7 +305,7 @@ var PocketCastsSettingTab = class extends import_obsidian.PluginSettingTab {
       });
     });
     containerEl.createEl("h3", { text: "Note Creation" });
-    new import_obsidian.Setting(containerEl).setName("Note path").setDesc("Folder where podcast episode notes will be created.").addText(
+    new import_obsidian.Setting(containerEl).setName("Note path").setDesc("Folder where podcast episode notes will be created. Use {{podcast_name}} and {{podcast_episode}} as placeholders. Directories will be created automatically.").addText(
       (text) => text.setPlaceholder("personal/podcasts").setValue(this.plugin.settings.notePath).onChange(async (value) => {
         this.plugin.settings.notePath = value.trim();
         await this.plugin.saveSettings();
@@ -383,7 +383,7 @@ var PocketCastsPlugin = class extends import_obsidian.Plugin {
     const sanitize = (s) => s.replace(/[\\/:*?"<>|#^[\]]/g, "-").trim();
     const rawFilename = this.settings.noteFilename.replace("{{podcast_name}}", sanitize(ep.podcastTitle)).replace("{{podcast_episode}}", sanitize(ep.title));
     const filename = rawFilename.endsWith(".md") ? rawFilename : rawFilename + ".md";
-    const folderPath = this.settings.notePath.replace(/\/+$/, "");
+    const folderPath = this.settings.notePath.replace("{{podcast_name}}", sanitize(ep.podcastTitle)).replace("{{podcast_episode}}", sanitize(ep.title)).replace(/\/+$/, "");
     const fullPath = folderPath ? `${folderPath}/${filename}` : filename;
     await this.ensureFolder(folderPath);
     const existing = this.app.vault.getAbstractFileByPath(fullPath);
