@@ -215,7 +215,7 @@ class PocketCastsView extends ItemView {
 
 		const meta = topRow.createDiv({ cls: "pocketcasts-card-meta" });
 		const pct = progressPct(ep);
-		const badge = pct >= 100 ? "✓" : `${pct}%`;
+		const badge = pct >= 100 ? "100%" : `${pct}%`;
 		meta.createEl("span", {
 			text: badge,
 			cls: pct >= 100 ? "pocketcasts-badge pocketcasts-badge-done" : "pocketcasts-badge",
