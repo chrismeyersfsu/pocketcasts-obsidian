@@ -137,8 +137,8 @@ async function apiFetchShowNotes(episodeUuid: string): Promise<string> {
 	}
 }
 
-function podcastImageUrl(podcastUuid: string, size = 280): string {
-	return `https://static.pocketcasts.com/discover/images/${podcastUuid}/artwork/${size}x${size}.jpg`;
+function podcastImageUrl(podcastUuid: string, size = 480): string {
+	return `https://static.pocketcasts.com/discover/images/webp/${size}/${podcastUuid}.webp`;
 }
 
 // ── View ─────────────────────────────────────────────────────────────────────
