@@ -2,7 +2,7 @@
   "name": "pocketsync",
   "version": "0.1.0",
   "description": "Sync Pocket Casts listening history to Obsidian",
-  "main": "main.js",
+  "main": "build/main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
