@@ -37,7 +37,9 @@ var DEFAULT_SETTINGS = {
   token: "",
   notePath: "personal/podcasts",
   noteFilename: "{{podcast_name}} - {{podcast_episode}}.md",
-  templaterFile: "_templater_templates/Podcast"
+  templaterFile: "_templater_templates/Podcast",
+  excludedPodcasts: [],
+  cachedPodcasts: []
 };
 function isConsidered(ep) {
   return ep.playingStatus === 3 || ep.playedUpTo >= MIN_LISTEN_SECONDS;
@@ -168,7 +170,8 @@ var PocketCastsView = class extends import_obsidian.ItemView {
         await this.plugin.saveSettings();
         episodes = await apiFetchHistory(this.plugin.settings.token);
       }
-      const considered = episodes.filter(isConsidered);
+      const excluded = new Set(this.plugin.settings.excludedPodcasts);
+      const considered = episodes.filter((ep) => isConsidered(ep) && !excluded.has(ep.podcastUuid));
       this.render(considered);
     } catch (err) {
       this.renderError(`Error: ${err.message}`);
@@ -328,6 +331,83 @@ var PocketCastsSettingTab = class extends import_obsidian.PluginSettingTab {
     new import_obsidian.Setting(containerEl).setName("Open listening history").addButton(
       (btn) => btn.setButtonText("Open view").setCta().onClick(() => this.plugin.activateView())
     );
+    containerEl.createEl("h3", { text: "Podcast Exclusions" });
+    containerEl.createEl("p", {
+      text: "Hide specific podcasts from your listening history view. Load your podcast list first, then toggle off any you want to exclude.",
+      cls: "setting-item-description"
+    });
+    const podcastListEl = containerEl.createDiv({ cls: "pocketcasts-exclusion-list" });
+    const renderPodcastList = () => {
+      podcastListEl.empty();
+      const podcasts = [...this.plugin.settings.cachedPodcasts].sort(
+        (a, b) => a.title.localeCompare(b.title)
+      );
+      if (podcasts.length === 0) {
+        podcastListEl.createEl("p", {
+          text: 'No podcasts loaded yet. Click "Load podcasts" above.',
+          cls: "pocketcasts-loading"
+        });
+        return;
+      }
+      for (const podcast of podcasts) {
+        new import_obsidian.Setting(podcastListEl).setName(podcast.title).addToggle(
+          (toggle) => toggle.setValue(!this.plugin.settings.excludedPodcasts.includes(podcast.uuid)).onChange(async (show) => {
+            if (show) {
+              this.plugin.settings.excludedPodcasts = this.plugin.settings.excludedPodcasts.filter((id) => id !== podcast.uuid);
+            } else {
+              if (!this.plugin.settings.excludedPodcasts.includes(podcast.uuid)) {
+                this.plugin.settings.excludedPodcasts.push(podcast.uuid);
+              }
+            }
+            await this.plugin.saveSettings();
+          })
+        );
+      }
+    };
+    new import_obsidian.Setting(containerEl).setName("Load podcasts").setDesc("Fetch your podcast list from your listening history.").addButton(
+      (btn) => btn.setButtonText("Load podcasts").onClick(async () => {
+        btn.setButtonText("Loading\u2026");
+        btn.setDisabled(true);
+        try {
+          const { email, password } = this.plugin.settings;
+          if (!email || !password) {
+            new import_obsidian.Notice("Configure your Pocket Casts credentials first.");
+            return;
+          }
+          if (!this.plugin.settings.token) {
+            this.plugin.settings.token = await apiLogin(email, password);
+            await this.plugin.saveSettings();
+          }
+          let episodes;
+          try {
+            episodes = await apiFetchHistory(this.plugin.settings.token);
+          } catch (e) {
+            this.plugin.settings.token = await apiLogin(email, password);
+            await this.plugin.saveSettings();
+            episodes = await apiFetchHistory(this.plugin.settings.token);
+          }
+          const known = new Map(
+            this.plugin.settings.cachedPodcasts.map((p) => [p.uuid, p.title])
+          );
+          for (const ep of episodes) {
+            if (ep.podcastUuid && !known.has(ep.podcastUuid)) {
+              known.set(ep.podcastUuid, ep.podcastTitle);
+            }
+          }
+          this.plugin.settings.cachedPodcasts = Array.from(known.entries()).map(
+            ([uuid, title]) => ({ uuid, title })
+          );
+          await this.plugin.saveSettings();
+          renderPodcastList();
+        } catch (err) {
+          new import_obsidian.Notice(`PocketSync: ${err.message}`);
+        } finally {
+          btn.setButtonText("Load podcasts");
+          btn.setDisabled(false);
+        }
+      })
+    );
+    renderPodcastList();
   }
 };
 var PocketCastsPlugin = class extends import_obsidian.Plugin {

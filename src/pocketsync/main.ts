@@ -15,6 +15,11 @@ const VIEW_TYPE_POCKETCASTS = "pocketsync-history";
 const API_BASE = "https://api.pocketcasts.com";
 const MIN_LISTEN_SECONDS = 5 * 60; // 5 minutes
 
+interface PodcastInfo {
+	uuid: string;
+	title: string;
+}
+
 interface PocketCastsSettings {
 	email: string;
 	password: string;
@@ -22,6 +27,8 @@ interface PocketCastsSettings {
 	notePath: string;
 	noteFilename: string;
 	templaterFile: string;
+	excludedPodcasts: string[];     // podcast UUIDs to hide from the view
+	cachedPodcasts: PodcastInfo[];  // known podcasts for settings display
 }
 
 const DEFAULT_SETTINGS: PocketCastsSettings = {
@@ -31,6 +38,8 @@ const DEFAULT_SETTINGS: PocketCastsSettings = {
 	notePath: "personal/podcasts",
 	noteFilename: "{{podcast_name}} - {{podcast_episode}}.md",
 	templaterFile: "_templater_templates/Podcast",
+	excludedPodcasts: [],
+	cachedPodcasts: [],
 };
 
 interface Episode {
@@ -194,7 +203,8 @@ class PocketCastsView extends ItemView {
 				episodes = await apiFetchHistory(this.plugin.settings.token);
 			}
 
-			const considered = episodes.filter(isConsidered);
+			const excluded = new Set(this.plugin.settings.excludedPodcasts);
+			const considered = episodes.filter(ep => isConsidered(ep) && !excluded.has(ep.podcastUuid));
 			this.render(considered);
 		} catch (err) {
 			this.renderError(`Error: ${err.message}`);
@@ -427,6 +437,99 @@ class PocketCastsSettingTab extends PluginSettingTab {
 					.setCta()
 					.onClick(() => this.plugin.activateView())
 			);
+
+		containerEl.createEl("h3", { text: "Podcast Exclusions" });
+		containerEl.createEl("p", {
+			text: "Hide specific podcasts from your listening history view. Load your podcast list first, then toggle off any you want to exclude.",
+			cls: "setting-item-description",
+		});
+
+		const podcastListEl = containerEl.createDiv({ cls: "pocketcasts-exclusion-list" });
+
+		const renderPodcastList = () => {
+			podcastListEl.empty();
+			const podcasts = [...this.plugin.settings.cachedPodcasts].sort((a, b) =>
+				a.title.localeCompare(b.title)
+			);
+			if (podcasts.length === 0) {
+				podcastListEl.createEl("p", {
+					text: 'No podcasts loaded yet. Click "Load podcasts" above.',
+					cls: "pocketcasts-loading",
+				});
+				return;
+			}
+			for (const podcast of podcasts) {
+				new Setting(podcastListEl)
+					.setName(podcast.title)
+					.addToggle(toggle =>
+						toggle
+							.setValue(!this.plugin.settings.excludedPodcasts.includes(podcast.uuid))
+							.onChange(async (show) => {
+								if (show) {
+									this.plugin.settings.excludedPodcasts =
+										this.plugin.settings.excludedPodcasts.filter(id => id !== podcast.uuid);
+								} else {
+									if (!this.plugin.settings.excludedPodcasts.includes(podcast.uuid)) {
+										this.plugin.settings.excludedPodcasts.push(podcast.uuid);
+									}
+								}
+								await this.plugin.saveSettings();
+							})
+					);
+			}
+		};
+
+		new Setting(containerEl)
+			.setName("Load podcasts")
+			.setDesc("Fetch your podcast list from your listening history.")
+			.addButton(btn =>
+				btn
+					.setButtonText("Load podcasts")
+					.onClick(async () => {
+						btn.setButtonText("Loading…");
+						btn.setDisabled(true);
+						try {
+							const { email, password } = this.plugin.settings;
+							if (!email || !password) {
+								new Notice("Configure your Pocket Casts credentials first.");
+								return;
+							}
+							if (!this.plugin.settings.token) {
+								this.plugin.settings.token = await apiLogin(email, password);
+								await this.plugin.saveSettings();
+							}
+							let episodes: Episode[];
+							try {
+								episodes = await apiFetchHistory(this.plugin.settings.token);
+							} catch {
+								this.plugin.settings.token = await apiLogin(email, password);
+								await this.plugin.saveSettings();
+								episodes = await apiFetchHistory(this.plugin.settings.token);
+							}
+							// Merge newly discovered podcasts into cache
+							const known = new Map(
+								this.plugin.settings.cachedPodcasts.map(p => [p.uuid, p.title])
+							);
+							for (const ep of episodes) {
+								if (ep.podcastUuid && !known.has(ep.podcastUuid)) {
+									known.set(ep.podcastUuid, ep.podcastTitle);
+								}
+							}
+							this.plugin.settings.cachedPodcasts = Array.from(known.entries()).map(
+								([uuid, title]) => ({ uuid, title })
+							);
+							await this.plugin.saveSettings();
+							renderPodcastList();
+						} catch (err) {
+							new Notice(`PocketSync: ${err.message}`);
+						} finally {
+							btn.setButtonText("Load podcasts");
+							btn.setDisabled(false);
+						}
+					})
+			);
+
+		renderPodcastList();
 	}
 }
 
