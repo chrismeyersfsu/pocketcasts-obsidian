@@ -12,9 +12,11 @@ import {
 } from "obsidian";
 import {
 	Episode,
+	RawEpisode,
 	formatDate,
 	formatDuration,
 	isConsidered,
+	mapRawEpisode,
 	podcastImageUrl,
 	progressPct,
 } from "./utils";
@@ -51,27 +53,6 @@ const DEFAULT_SETTINGS: PocketCastsSettings = {
 
 // ── API ──────────────────────────────────────────────────────────────────────
 
-interface RawEpisode {
-	uuid?: string;
-	title?: string;
-	podcastTitle?: string;
-	podcastUuid?: string;
-	podcastSlug?: string;
-	slug?: string;
-	author?: string;
-	duration?: number;
-	playedUpTo?: number;
-	playingStatus?: number;
-	published?: string;
-	url?: string;
-	fileType?: string;
-	size?: number;
-	episodeSeason?: number;
-	episodeNumber?: number;
-	episodeType?: string;
-	starred?: boolean;
-}
-
 interface TemplaterPlugin {
 	templater: {
 		write_template_to_file(template: TFile, note: TFile): Promise<void>;
@@ -106,26 +87,7 @@ async function apiFetchHistory(token: string): Promise<Episode[]> {
 		body: JSON.stringify({}),
 	});
 	if (resp.status !== 200) throw new Error(`History fetch failed (${resp.status})`);
-	const episodes: Episode[] = (resp.json.episodes ?? []).map((e: RawEpisode) => ({
-		uuid: e.uuid,
-		title: e.title ?? "Untitled",
-		podcastTitle: e.podcastTitle ?? "Unknown Podcast",
-		podcastUuid: e.podcastUuid ?? "",
-		podcastSlug: e.podcastSlug ?? "",
-		slug: e.slug ?? "",
-		author: e.author ?? "",
-		duration: e.duration ?? 0,
-		playedUpTo: e.playedUpTo ?? 0,
-		playingStatus: e.playingStatus ?? 0,
-		published: e.published ?? "",
-		url: e.url ?? "",
-		fileType: e.fileType ?? "",
-		fileSize: Number(e.size ?? 0),
-		episodeSeason: e.episodeSeason ?? 0,
-		episodeNumber: e.episodeNumber ?? 0,
-		episodeType: e.episodeType ?? "",
-		starred: e.starred ?? false,
-	}));
+	const episodes: Episode[] = (resp.json.episodes ?? []).map((e: RawEpisode) => mapRawEpisode(e));
 	return episodes;
 }
 

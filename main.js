@@ -31,6 +31,29 @@ var import_obsidian = require("obsidian");
 
 // src/pocketsync/utils.ts
 var MIN_LISTEN_SECONDS = 5 * 60;
+function mapRawEpisode(e) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+  return {
+    uuid: (_a = e.uuid) != null ? _a : "",
+    title: (_b = e.title) != null ? _b : "Untitled",
+    podcastTitle: (_c = e.podcastTitle) != null ? _c : "Unknown Podcast",
+    podcastUuid: (_d = e.podcastUuid) != null ? _d : "",
+    podcastSlug: (_e = e.podcastSlug) != null ? _e : "",
+    slug: (_f = e.slug) != null ? _f : "",
+    author: (_g = e.author) != null ? _g : "",
+    duration: (_h = e.duration) != null ? _h : 0,
+    playedUpTo: (_i = e.playedUpTo) != null ? _i : 0,
+    playingStatus: (_j = e.playingStatus) != null ? _j : 0,
+    published: (_k = e.published) != null ? _k : "",
+    url: (_l = e.url) != null ? _l : "",
+    fileType: (_m = e.fileType) != null ? _m : "",
+    fileSize: Number((_n = e.size) != null ? _n : 0),
+    episodeSeason: (_o = e.episodeSeason) != null ? _o : 0,
+    episodeNumber: (_p = e.episodeNumber) != null ? _p : 0,
+    episodeType: (_q = e.episodeType) != null ? _q : "",
+    starred: (_r = e.starred) != null ? _r : false
+  };
+}
 function isConsidered(ep) {
   return ep.playingStatus === 3 || ep.playedUpTo >= MIN_LISTEN_SECONDS;
 }
@@ -89,29 +112,7 @@ async function apiFetchHistory(token) {
     body: JSON.stringify({})
   });
   if (resp.status !== 200) throw new Error(`History fetch failed (${resp.status})`);
-  const episodes = ((_a = resp.json.episodes) != null ? _a : []).map((e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
-    return {
-      uuid: e.uuid,
-      title: (_a2 = e.title) != null ? _a2 : "Untitled",
-      podcastTitle: (_b = e.podcastTitle) != null ? _b : "Unknown Podcast",
-      podcastUuid: (_c = e.podcastUuid) != null ? _c : "",
-      podcastSlug: (_d = e.podcastSlug) != null ? _d : "",
-      slug: (_e = e.slug) != null ? _e : "",
-      author: (_f = e.author) != null ? _f : "",
-      duration: (_g = e.duration) != null ? _g : 0,
-      playedUpTo: (_h = e.playedUpTo) != null ? _h : 0,
-      playingStatus: (_i = e.playingStatus) != null ? _i : 0,
-      published: (_j = e.published) != null ? _j : "",
-      url: (_k = e.url) != null ? _k : "",
-      fileType: (_l = e.fileType) != null ? _l : "",
-      fileSize: Number((_m = e.size) != null ? _m : 0),
-      episodeSeason: (_n = e.episodeSeason) != null ? _n : 0,
-      episodeNumber: (_o = e.episodeNumber) != null ? _o : 0,
-      episodeType: (_p = e.episodeType) != null ? _p : "",
-      starred: (_q = e.starred) != null ? _q : false
-    };
-  });
+  const episodes = ((_a = resp.json.episodes) != null ? _a : []).map((e) => mapRawEpisode(e));
   return episodes;
 }
 async function apiFetchShowNotes(episodeUuid) {
