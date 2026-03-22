@@ -3,7 +3,7 @@
 	"name": "PocketSync",
 	"version": "0.2.0",
 	"minAppVersion": "1.0.0",
-	"description": "Sync your Pocket Casts listening history to Obsidian markdown files.",
+	"description": "Sync your Pocket Casts listening history to markdown notes.",
 	"author": "chrismeyersfsu",
 	"authorUrl": "https://github.com/chrismeyersfsu",
 	"isDesktopOnly": false
