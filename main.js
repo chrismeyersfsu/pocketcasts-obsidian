@@ -31,6 +31,29 @@ var import_obsidian = require("obsidian");
 
 // src/pocketsync/utils.ts
 var MIN_LISTEN_SECONDS = 5 * 60;
+function mapRawEpisode(e) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+  return {
+    uuid: (_a = e.uuid) != null ? _a : "",
+    title: (_b = e.title) != null ? _b : "Untitled",
+    podcastTitle: (_c = e.podcastTitle) != null ? _c : "Unknown Podcast",
+    podcastUuid: (_d = e.podcastUuid) != null ? _d : "",
+    podcastSlug: (_e = e.podcastSlug) != null ? _e : "",
+    slug: (_f = e.slug) != null ? _f : "",
+    author: (_g = e.author) != null ? _g : "",
+    duration: (_h = e.duration) != null ? _h : 0,
+    playedUpTo: (_i = e.playedUpTo) != null ? _i : 0,
+    playingStatus: (_j = e.playingStatus) != null ? _j : 0,
+    published: (_k = e.published) != null ? _k : "",
+    url: (_l = e.url) != null ? _l : "",
+    fileType: (_m = e.fileType) != null ? _m : "",
+    fileSize: Number((_n = e.size) != null ? _n : 0),
+    episodeSeason: (_o = e.episodeSeason) != null ? _o : 0,
+    episodeNumber: (_p = e.episodeNumber) != null ? _p : 0,
+    episodeType: (_q = e.episodeType) != null ? _q : "",
+    starred: (_r = e.starred) != null ? _r : false
+  };
+}
 function isConsidered(ep) {
   return ep.playingStatus === 3 || ep.playedUpTo >= MIN_LISTEN_SECONDS;
 }
@@ -89,29 +112,7 @@ async function apiFetchHistory(token) {
     body: JSON.stringify({})
   });
   if (resp.status !== 200) throw new Error(`History fetch failed (${resp.status})`);
-  const episodes = ((_a = resp.json.episodes) != null ? _a : []).map((e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
-    return {
-      uuid: e.uuid,
-      title: (_a2 = e.title) != null ? _a2 : "Untitled",
-      podcastTitle: (_b = e.podcastTitle) != null ? _b : "Unknown Podcast",
-      podcastUuid: (_c = e.podcastUuid) != null ? _c : "",
-      podcastSlug: (_d = e.podcastSlug) != null ? _d : "",
-      slug: (_e = e.slug) != null ? _e : "",
-      author: (_f = e.author) != null ? _f : "",
-      duration: (_g = e.duration) != null ? _g : 0,
-      playedUpTo: (_h = e.playedUpTo) != null ? _h : 0,
-      playingStatus: (_i = e.playingStatus) != null ? _i : 0,
-      published: (_j = e.published) != null ? _j : "",
-      url: (_k = e.url) != null ? _k : "",
-      fileType: (_l = e.fileType) != null ? _l : "",
-      fileSize: Number((_m = e.size) != null ? _m : 0),
-      episodeSeason: (_n = e.episodeSeason) != null ? _n : 0,
-      episodeNumber: (_o = e.episodeNumber) != null ? _o : 0,
-      episodeType: (_p = e.episodeType) != null ? _p : "",
-      starred: (_q = e.starred) != null ? _q : false
-    };
-  });
+  const episodes = ((_a = resp.json.episodes) != null ? _a : []).map((e) => mapRawEpisode(e));
   return episodes;
 }
 async function apiFetchShowNotes(episodeUuid) {
@@ -137,7 +138,7 @@ var PocketCastsView = class extends import_obsidian.ItemView {
     return VIEW_TYPE_POCKETCASTS;
   }
   getDisplayText() {
-    return "Pocket Casts History";
+    return "Pocket Casts history";
   }
   getIcon() {
     return "headphones";
@@ -192,7 +193,9 @@ var PocketCastsView = class extends import_obsidian.ItemView {
     header.createEl("h2", { text: "Pocket Casts" });
     const controls = header.createDiv({ cls: "pocketcasts-controls" });
     const refreshBtn = controls.createEl("button", { text: "Refresh" });
-    refreshBtn.addEventListener("click", () => this.refresh());
+    refreshBtn.addEventListener("click", () => {
+      void this.refresh();
+    });
     if (episodes.length === 0) {
       contentEl.createEl("p", { text: "No episodes found.", cls: "pocketcasts-empty" });
       return;
@@ -213,7 +216,9 @@ var PocketCastsView = class extends import_obsidian.ItemView {
   renderEpisode(container, ep) {
     const card = container.createDiv({ cls: "pocketcasts-card" });
     card.title = "Click to create a note for this episode";
-    card.addEventListener("click", () => this.plugin.createEpisodeNote(ep));
+    card.addEventListener("click", () => {
+      void this.plugin.createEpisodeNote(ep);
+    });
     const topRow = card.createDiv({ cls: "pocketcasts-card-top" });
     const info = topRow.createDiv({ cls: "pocketcasts-card-info" });
     info.createEl("div", { text: ep.title, cls: "pocketcasts-episode-title" });
@@ -286,15 +291,15 @@ var PocketCastsSettingTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Pocket Casts Sync" });
-    new import_obsidian.Setting(containerEl).setName("Email").setDesc("Your Pocket Casts account email").addText(
+    new import_obsidian.Setting(containerEl).setName("Pocket Casts sync").setHeading();
+    new import_obsidian.Setting(containerEl).setName("Email").setDesc("Your Pocket Casts account email.").addText(
       (text) => text.setPlaceholder("email@example.com").setValue(this.plugin.settings.email).onChange(async (value) => {
         this.plugin.settings.email = value.trim();
         this.plugin.settings.token = "";
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian.Setting(containerEl).setName("Password").setDesc("Your Pocket Casts account password").addText((text) => {
+    new import_obsidian.Setting(containerEl).setName("Password").setDesc("Your Pocket Casts account password.").addText((text) => {
       text.inputEl.type = "password";
       text.setPlaceholder("\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022").setValue(this.plugin.settings.password).onChange(async (value) => {
         this.plugin.settings.password = value;
@@ -302,7 +307,7 @@ var PocketCastsSettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    containerEl.createEl("h3", { text: "Note Creation" });
+    new import_obsidian.Setting(containerEl).setName("Note creation").setHeading();
     new import_obsidian.Setting(containerEl).setName("Note path").setDesc("Folder where podcast episode notes will be created. Use {{podcast_name}} and {{podcast_episode}} as placeholders. Directories will be created automatically.").addText(
       (text) => text.setPlaceholder("personal/podcasts").setValue(this.plugin.settings.notePath).onChange(async (value) => {
         this.plugin.settings.notePath = value.trim();
@@ -324,9 +329,11 @@ var PocketCastsSettingTab = class extends import_obsidian.PluginSettingTab {
       })
     );
     new import_obsidian.Setting(containerEl).setName("Open listening history").addButton(
-      (btn) => btn.setButtonText("Open view").setCta().onClick(() => this.plugin.activateView())
+      (btn) => btn.setButtonText("Open view").setCta().onClick(() => {
+        void this.plugin.activateView();
+      })
     );
-    containerEl.createEl("h3", { text: "Podcast Exclusions" });
+    new import_obsidian.Setting(containerEl).setName("Podcast exclusions").setHeading();
     containerEl.createEl("p", {
       text: "Hide specific podcasts from your listening history view. Load your podcast list first, then toggle off any you want to exclude.",
       cls: "setting-item-description"
@@ -409,13 +416,15 @@ var PocketCastsPlugin = class extends import_obsidian.Plugin {
   async onload() {
     await this.loadSettings();
     this.registerView(VIEW_TYPE_POCKETCASTS, (leaf) => new PocketCastsView(leaf, this));
-    this.addRibbonIcon("headphones", "Pocket Casts History", () => {
-      this.activateView();
+    this.addRibbonIcon("headphones", "Pocket Casts history", () => {
+      void this.activateView();
     });
     this.addCommand({
       id: "open-pocketcasts-history",
       name: "Open listening history",
-      callback: () => this.activateView()
+      callback: () => {
+        void this.activateView();
+      }
     });
     this.addCommand({
       id: "refresh-pocketcasts-history",
@@ -423,17 +432,13 @@ var PocketCastsPlugin = class extends import_obsidian.Plugin {
       callback: async () => {
         const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_POCKETCASTS)[0];
         if (leaf) {
-          leaf.view.refresh();
+          await leaf.view.refresh();
         } else {
           await this.activateView();
         }
       }
     });
     this.addSettingTab(new PocketCastsSettingTab(this.app, this));
-    this.addStyles();
-  }
-  onunload() {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_POCKETCASTS);
   }
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -444,13 +449,13 @@ var PocketCastsPlugin = class extends import_obsidian.Plugin {
   async activateView() {
     const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_POCKETCASTS);
     if (existing.length > 0) {
-      this.app.workspace.revealLeaf(existing[0]);
+      void this.app.workspace.revealLeaf(existing[0]);
       return;
     }
     const leaf = this.app.workspace.getRightLeaf(false);
     if (!leaf) return;
     await leaf.setViewState({ type: VIEW_TYPE_POCKETCASTS, active: true });
-    this.app.workspace.revealLeaf(leaf);
+    void this.app.workspace.revealLeaf(leaf);
   }
   async createEpisodeNote(ep) {
     var _a, _b;
@@ -470,7 +475,7 @@ var PocketCastsPlugin = class extends import_obsidian.Plugin {
         await this.app.workspace.openLinkText(fullPath, "", false);
         return;
       }
-      await this.app.vault.delete(existing);
+      await this.app.fileManager.trashFile(existing);
     }
     const showNotes = await apiFetchShowNotes(ep.uuid);
     const frontmatter = this.buildFrontmatter(ep, showNotes);
@@ -575,129 +580,5 @@ var PocketCastsPlugin = class extends import_obsidian.Plugin {
     }
     lines.push("## Notes", "", "");
     return lines.filter((l) => l !== null).join("\n");
-  }
-  addStyles() {
-    const style = document.createElement("style");
-    style.id = "pocketcasts-styles";
-    style.textContent = `
-.pocketcasts-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 12px 16px 8px;
-	border-bottom: 1px solid var(--background-modifier-border);
-}
-.pocketcasts-header h2 {
-	margin: 0;
-	font-size: 1.1em;
-}
-.pocketcasts-controls button {
-	font-size: 0.8em;
-	padding: 3px 10px;
-}
-.pocketcasts-stats {
-	padding: 6px 16px;
-	font-size: 0.8em;
-	color: var(--text-muted);
-	border-bottom: 1px solid var(--background-modifier-border);
-}
-.pocketcasts-loading,
-.pocketcasts-empty {
-	padding: 24px 16px;
-	color: var(--text-muted);
-	font-size: 0.9em;
-}
-.pocketcasts-error {
-	padding: 16px;
-	color: var(--text-error);
-	font-size: 0.9em;
-}
-.pocketcasts-list {
-	overflow-y: auto;
-}
-.pocketcasts-card {
-	padding: 10px 16px 8px;
-	border-bottom: 1px solid var(--background-modifier-border);
-	cursor: pointer;
-}
-.pocketcasts-card:hover {
-	background: var(--background-secondary-alt);
-}
-.pocketcasts-note-icon {
-	margin-left: 6px;
-	font-size: 0.85em;
-	opacity: 0.4;
-}
-.pocketcasts-card:hover .pocketcasts-note-icon {
-	opacity: 1;
-}
-.pocketcasts-card-top {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: 8px;
-}
-.pocketcasts-card-info {
-	flex: 1;
-	min-width: 0;
-}
-.pocketcasts-episode-title {
-	font-size: 0.9em;
-	font-weight: 600;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	color: var(--text-normal);
-}
-.pocketcasts-podcast-title {
-	font-size: 0.78em;
-	color: var(--text-muted);
-	margin-top: 1px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-.pocketcasts-card-meta {
-	flex-shrink: 0;
-}
-.pocketcasts-badge {
-	font-size: 0.75em;
-	padding: 2px 6px;
-	border-radius: 4px;
-	background: var(--background-modifier-border);
-	color: var(--text-muted);
-}
-.pocketcasts-badge-done {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-}
-.pocketcasts-card-bottom {
-	display: flex;
-	justify-content: space-between;
-	margin-top: 4px;
-	font-size: 0.74em;
-	color: var(--text-faint);
-}
-.pocketcasts-progress-wrap {
-	margin-top: 5px;
-	height: 3px;
-	background: var(--background-modifier-border);
-	border-radius: 2px;
-	overflow: hidden;
-}
-.pocketcasts-progress-bar {
-	height: 100%;
-	background: var(--interactive-accent);
-	border-radius: 2px;
-	transition: width 0.3s ease;
-}
-.pocketcasts-modal-buttons {
-	display: flex;
-	gap: 8px;
-	justify-content: flex-end;
-	margin-top: 16px;
-}
-`;
-    document.head.appendChild(style);
   }
 };

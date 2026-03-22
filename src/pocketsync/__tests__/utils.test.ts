@@ -4,6 +4,7 @@ import {
 	formatDate,
 	formatDuration,
 	isConsidered,
+	mapRawEpisode,
 	podcastImageUrl,
 	progressPct,
 } from "../utils";
@@ -135,6 +136,62 @@ describe("progressPct", () => {
 	test("rounds to nearest integer", () => {
 		const ep = makeEpisode({ duration: 3, playedUpTo: 1, playingStatus: 0 });
 		expect(progressPct(ep)).toBe(33);
+	});
+});
+
+// ── mapRawEpisode ─────────────────────────────────────────────────────────────
+
+describe("mapRawEpisode", () => {
+	test("maps a fully populated raw episode correctly", () => {
+		const raw = {
+			uuid: "abc-123",
+			title: "My Episode",
+			podcastTitle: "My Podcast",
+			podcastUuid: "pod-uuid",
+			podcastSlug: "my-podcast",
+			slug: "my-episode",
+			author: "Author Name",
+			duration: 3600,
+			playedUpTo: 1800,
+			playingStatus: 0,
+			published: "2024-01-15T00:00:00Z",
+			url: "https://example.com/ep.mp3",
+			fileType: "audio/mpeg",
+			size: 10240,
+			episodeSeason: 2,
+			episodeNumber: 5,
+			episodeType: "full",
+			starred: true,
+		};
+		const ep = mapRawEpisode(raw);
+		expect(ep.uuid).toBe("abc-123");
+		expect(ep.title).toBe("My Episode");
+		expect(ep.podcastTitle).toBe("My Podcast");
+		expect(ep.fileSize).toBe(10240);
+		expect(ep.starred).toBe(true);
+		expect(ep.episodeSeason).toBe(2);
+	});
+
+	test("fills in defaults for missing fields", () => {
+		const ep = mapRawEpisode({});
+		expect(ep.uuid).toBe("");
+		expect(ep.title).toBe("Untitled");
+		expect(ep.podcastTitle).toBe("Unknown Podcast");
+		expect(ep.duration).toBe(0);
+		expect(ep.playedUpTo).toBe(0);
+		expect(ep.playingStatus).toBe(0);
+		expect(ep.fileSize).toBe(0);
+		expect(ep.starred).toBe(false);
+	});
+
+	test("converts size field to fileSize as a number", () => {
+		const ep = mapRawEpisode({ size: 99999 });
+		expect(ep.fileSize).toBe(99999);
+	});
+
+	test("treats missing size as 0 for fileSize", () => {
+		const ep = mapRawEpisode({ title: "No size" });
+		expect(ep.fileSize).toBe(0);
 	});
 });
 
