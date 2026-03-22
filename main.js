@@ -45,23 +45,19 @@ function isConsidered(ep) {
   return ep.playingStatus === 3 || ep.playedUpTo >= MIN_LISTEN_SECONDS;
 }
 function formatDuration(seconds) {
-  if (!seconds)
-    return "0m";
+  if (!seconds) return "0m";
   const h = Math.floor(seconds / 3600);
   const m = Math.floor(seconds % 3600 / 60);
-  if (h > 0)
-    return `${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
 }
 function formatDate(dateStr) {
-  if (!dateStr)
-    return "";
+  if (!dateStr) return "";
   const d = new Date(dateStr);
   return d.toLocaleDateString(void 0, { year: "numeric", month: "short", day: "numeric" });
 }
 function progressPct(ep) {
-  if (!ep.duration)
-    return ep.playingStatus === 3 ? 100 : 0;
+  if (!ep.duration) return ep.playingStatus === 3 ? 100 : 0;
   return Math.min(100, Math.round(ep.playedUpTo / ep.duration * 100));
 }
 async function apiLogin(email, password) {
@@ -71,8 +67,7 @@ async function apiLogin(email, password) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, scope: "webplayer" })
   });
-  if (resp.status !== 200)
-    throw new Error(`Login failed (${resp.status})`);
+  if (resp.status !== 200) throw new Error(`Login failed (${resp.status})`);
   return resp.json.token;
 }
 async function apiFetchHistory(token) {
@@ -86,8 +81,7 @@ async function apiFetchHistory(token) {
     },
     body: JSON.stringify({})
   });
-  if (resp.status !== 200)
-    throw new Error(`History fetch failed (${resp.status})`);
+  if (resp.status !== 200) throw new Error(`History fetch failed (${resp.status})`);
   const episodes = ((_a = resp.json.episodes) != null ? _a : []).map((e) => {
     var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
     return {
@@ -120,9 +114,7 @@ async function apiFetchShowNotes(episodeUuid) {
       url: `https://cache.pocketcasts.com/episode/show_notes/${episodeUuid}`,
       method: "GET"
     });
-    console.log(`PocketSync show_notes status=${resp.status}`, resp.json);
-    if (resp.status !== 200)
-      return "";
+    if (resp.status !== 200) return "";
     return (_a = resp.json.show_notes) != null ? _a : "";
   } catch (e) {
     console.error("PocketSync show_notes fetch error", episodeUuid, e);
@@ -251,8 +243,7 @@ var FileExistsModal = class extends import_obsidian.Modal {
     this.resolve = resolve;
   }
   pick(choice) {
-    if (this.resolved)
-      return;
+    if (this.resolved) return;
     this.resolved = true;
     this.resolve(choice);
   }
@@ -453,8 +444,7 @@ var PocketCastsPlugin = class extends import_obsidian.Plugin {
       return;
     }
     const leaf = this.app.workspace.getRightLeaf(false);
-    if (!leaf)
-      return;
+    if (!leaf) return;
     await leaf.setViewState({ type: VIEW_TYPE_POCKETCASTS, active: true });
     this.app.workspace.revealLeaf(leaf);
   }
@@ -471,8 +461,7 @@ var PocketCastsPlugin = class extends import_obsidian.Plugin {
       const choice = await new Promise(
         (resolve) => new FileExistsModal(this.app, filename, resolve).open()
       );
-      if (choice === "cancel")
-        return;
+      if (choice === "cancel") return;
       if (choice === "open") {
         await this.app.workspace.openLinkText(fullPath, "", false);
         return;
@@ -502,8 +491,7 @@ var PocketCastsPlugin = class extends import_obsidian.Plugin {
     new import_obsidian.Notice(`Created podcast note: ${filename}`);
   }
   async ensureFolder(folderPath) {
-    if (!folderPath)
-      return;
+    if (!folderPath) return;
     const parts = folderPath.split("/").filter(Boolean);
     let current = "";
     for (const part of parts) {
@@ -541,16 +529,11 @@ var PocketCastsPlugin = class extends import_obsidian.Plugin {
       `audio_url: "${esc(ep.url)}"`,
       `image_url: "${imageUrl}"`
     ];
-    if (ep.fileType)
-      lines.push(`file_type: "${ep.fileType}"`);
-    if (ep.fileSize)
-      lines.push(`file_size_bytes: ${ep.fileSize}`);
-    if (ep.episodeType)
-      lines.push(`episode_type: "${ep.episodeType}"`);
-    if (ep.episodeSeason)
-      lines.push(`season: ${ep.episodeSeason}`);
-    if (ep.episodeNumber)
-      lines.push(`episode_number: ${ep.episodeNumber}`);
+    if (ep.fileType) lines.push(`file_type: "${ep.fileType}"`);
+    if (ep.fileSize) lines.push(`file_size_bytes: ${ep.fileSize}`);
+    if (ep.episodeType) lines.push(`episode_type: "${ep.episodeType}"`);
+    if (ep.episodeSeason) lines.push(`season: ${ep.episodeSeason}`);
+    if (ep.episodeNumber) lines.push(`episode_number: ${ep.episodeNumber}`);
     lines.push(showNotes ? `description: |
   ${showNotes.trim().replace(/\n/g, "\n  ")}` : `description: ""`);
     lines.push(`tags:
