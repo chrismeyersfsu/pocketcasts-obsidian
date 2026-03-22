@@ -61,6 +61,8 @@ Each created note includes the following frontmatter:
 | `author` | Episode author |
 | `episode_uuid` | Pocket Casts episode ID |
 | `podcast_uuid` | Pocket Casts podcast ID |
+| `podcast_slug` | URL-friendly podcast identifier |
+| `episode_slug` | URL-friendly episode identifier |
 | `published_date` | Publication date |
 | `duration_seconds` | Total duration in seconds |
 | `duration_formatted` | Human-readable duration (e.g. `1h 23m`) |
@@ -68,11 +70,17 @@ Each created note includes the following frontmatter:
 | `played_up_to_formatted` | Human-readable progress |
 | `progress_percent` | Listening progress (0–100) |
 | `completed` | `true` if fully listened |
+| `playing_status` | Raw Pocket Casts playing status code |
 | `starred` | `true` if starred in Pocket Casts |
 | `audio_url` | Direct link to the audio file |
 | `image_url` | Podcast artwork URL |
-| `episode_number` | Episode number (if available) |
+| `file_type` | Audio file MIME type (if available) |
+| `file_size_bytes` | Audio file size in bytes (if available) |
+| `episode_type` | Episode type, e.g. `full`, `trailer` (if available) |
 | `season` | Season number (if available) |
+| `episode_number` | Episode number (if available) |
+| `description` | Show notes fetched from Pocket Casts |
+| `tags` | Always set to `[podcast]` |
 
 ## License
 
