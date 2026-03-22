@@ -1,11 +1,11 @@
 {
-  "id": "pocketsync",
-  "name": "PocketSync",
-  "version": "0.1.0",
-  "minAppVersion": "1.0.0",
-  "description": "Sync your Pocket Casts listening history to Obsidian markdown files.",
-  "author": "chrismeyersfsu",
-  "authorUrl": "https://github.com/chrismeyersfsu",
-  "fundingUrl": "",
-  "isDesktopOnly": false
+	"id": "pocketsync",
+	"name": "PocketSync",
+	"version": "0.1.1",
+	"minAppVersion": "1.0.0",
+	"description": "Sync your Pocket Casts listening history to Obsidian markdown files.",
+	"author": "chrismeyersfsu",
+	"authorUrl": "https://github.com/chrismeyersfsu",
+	"fundingUrl": "",
+	"isDesktopOnly": false
 }
