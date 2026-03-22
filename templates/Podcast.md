@@ -39,10 +39,6 @@ tags:
 > **Status**: <% tp.frontmatter.completed ? "✅ Completed" : "⏳ In Progress" %>
 > **Audio**: [Listen](<% tp.frontmatter.audio_url %>)
 
-## Description
-
-<!-- Show notes will appear here when using the default note format -->
-
 ## Summary
 
 <!-- Add a brief summary of the episode -->
@@ -53,12 +49,14 @@ tags:
 
 ## Notes
 
-<!-- Detailed notes, timestamps, quotes -->
-
 ## Action Items
 
 - [ ]
 
 ## References
 
-<!-- Links, books, people, or resources mentioned -->
+
+## Description
+
+<!-- Show notes will appear here when using the default note format -->
+
