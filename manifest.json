@@ -1,7 +1,7 @@
 {
 	"id": "pocketsync",
 	"name": "PocketSync",
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"minAppVersion": "1.0.0",
 	"description": "Sync your Pocket Casts listening history to Obsidian markdown files.",
 	"author": "chrismeyersfsu",
