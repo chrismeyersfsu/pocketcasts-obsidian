@@ -28,19 +28,9 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 var import_obsidian = require("obsidian");
-var VIEW_TYPE_POCKETCASTS = "pocketsync-history";
-var API_BASE = "https://api.pocketcasts.com";
+
+// src/pocketsync/utils.ts
 var MIN_LISTEN_SECONDS = 5 * 60;
-var DEFAULT_SETTINGS = {
-  email: "",
-  password: "",
-  token: "",
-  notePath: "personal/podcasts",
-  noteFilename: "{{podcast_name}} - {{podcast_episode}}.md",
-  templaterFile: "_templater_templates/Podcast",
-  excludedPodcasts: [],
-  cachedPodcasts: []
-};
 function isConsidered(ep) {
   return ep.playingStatus === 3 || ep.playedUpTo >= MIN_LISTEN_SECONDS;
 }
@@ -60,6 +50,23 @@ function progressPct(ep) {
   if (!ep.duration) return ep.playingStatus === 3 ? 100 : 0;
   return Math.min(100, Math.round(ep.playedUpTo / ep.duration * 100));
 }
+function podcastImageUrl(podcastUuid, size = 480) {
+  return `https://static.pocketcasts.com/discover/images/webp/${size}/${podcastUuid}.webp`;
+}
+
+// src/pocketsync/main.ts
+var VIEW_TYPE_POCKETCASTS = "pocketsync-history";
+var API_BASE = "https://api.pocketcasts.com";
+var DEFAULT_SETTINGS = {
+  email: "",
+  password: "",
+  token: "",
+  notePath: "personal/podcasts",
+  noteFilename: "{{podcast_name}} - {{podcast_episode}}.md",
+  templaterFile: "_templater_templates/Podcast",
+  excludedPodcasts: [],
+  cachedPodcasts: []
+};
 async function apiLogin(email, password) {
   const resp = await (0, import_obsidian.requestUrl)({
     url: `${API_BASE}/user/login`,
@@ -120,9 +127,6 @@ async function apiFetchShowNotes(episodeUuid) {
     console.error("PocketSync show_notes fetch error", episodeUuid, e);
     return "";
   }
-}
-function podcastImageUrl(podcastUuid, size = 480) {
-  return `https://static.pocketcasts.com/discover/images/webp/${size}/${podcastUuid}.webp`;
 }
 var PocketCastsView = class extends import_obsidian.ItemView {
   constructor(leaf, plugin) {
