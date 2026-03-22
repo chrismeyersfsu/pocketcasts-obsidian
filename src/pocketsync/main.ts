@@ -139,7 +139,7 @@ async function apiFetchShowNotes(episodeUuid: string): Promise<string> {
 			url: `https://cache.pocketcasts.com/episode/show_notes/${episodeUuid}`,
 			method: "GET",
 		});
-		console.log(`PocketSync show_notes status=${resp.status}`, resp.json);
+
 		if (resp.status !== 200) return "";
 		return resp.json.show_notes ?? "";
 	} catch (e) {
