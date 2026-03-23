@@ -40,13 +40,17 @@ interface PocketCastsSettings {
 	cachedPodcasts: PodcastInfo[];  // known podcasts for settings display
 }
 
+const DEFAULT_EMAIL_PLACEHOLDER = "email@example.com";
+const DEFAULT_NOTE_PATH = "personal/podcasts";
+const DEFAULT_TEMPLATER_FILE = "_templater_templates/Podcast";
+
 const DEFAULT_SETTINGS: PocketCastsSettings = {
 	email: "",
 	password: "",
 	token: "",
-	notePath: "personal/podcasts",
+	notePath: DEFAULT_NOTE_PATH,
 	noteFilename: "{{podcast_name}} - {{podcast_episode}}.md",
-	templaterFile: "_templater_templates/Podcast",
+	templaterFile: DEFAULT_TEMPLATER_FILE,
 	excludedPodcasts: [],
 	cachedPodcasts: [],
 };
@@ -314,7 +318,7 @@ class PocketCastsSettingTab extends PluginSettingTab {
 			.setDesc("Your Pocket Casts account email.")
 			.addText(text =>
 				text
-					.setPlaceholder("Email@example.com")
+					.setPlaceholder(DEFAULT_EMAIL_PLACEHOLDER)
 					.setValue(this.plugin.settings.email)
 					.onChange(async value => {
 						this.plugin.settings.email = value.trim();
@@ -345,7 +349,7 @@ class PocketCastsSettingTab extends PluginSettingTab {
 			.setDesc("Folder where podcast episode notes will be created. Use {{podcast_name}} and {{podcast_episode}} as placeholders. Directories will be created automatically.")
 			.addText(text =>
 				text
-					.setPlaceholder("Personal/podcasts")
+					.setPlaceholder(DEFAULT_NOTE_PATH)
 					.setValue(this.plugin.settings.notePath)
 					.onChange(async value => {
 						this.plugin.settings.notePath = value.trim();
@@ -375,7 +379,7 @@ class PocketCastsSettingTab extends PluginSettingTab {
 			)
 			.addText(text =>
 				text
-					.setPlaceholder("_templater_templates/podcast")
+					.setPlaceholder(DEFAULT_TEMPLATER_FILE)
 					.setValue(this.plugin.settings.templaterFile)
 					.onChange(async value => {
 						this.plugin.settings.templaterFile = value.trim();
