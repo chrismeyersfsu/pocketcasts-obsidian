@@ -314,7 +314,7 @@ class PocketCastsSettingTab extends PluginSettingTab {
 			.setDesc("Your Pocket Casts account email.")
 			.addText(text =>
 				text
-					.setPlaceholder("email@example.com")
+					.setPlaceholder("Email@example.com")
 					.setValue(this.plugin.settings.email)
 					.onChange(async value => {
 						this.plugin.settings.email = value.trim();
@@ -345,7 +345,7 @@ class PocketCastsSettingTab extends PluginSettingTab {
 			.setDesc("Folder where podcast episode notes will be created. Use {{podcast_name}} and {{podcast_episode}} as placeholders. Directories will be created automatically.")
 			.addText(text =>
 				text
-					.setPlaceholder("personal/podcasts")
+					.setPlaceholder("Personal/podcasts")
 					.setValue(this.plugin.settings.notePath)
 					.onChange(async value => {
 						this.plugin.settings.notePath = value.trim();
@@ -375,7 +375,7 @@ class PocketCastsSettingTab extends PluginSettingTab {
 			)
 			.addText(text =>
 				text
-					.setPlaceholder("_templater_templates/Podcast")
+					.setPlaceholder("_templater_templates/podcast")
 					.setValue(this.plugin.settings.templaterFile)
 					.onChange(async value => {
 						this.plugin.settings.templaterFile = value.trim();
@@ -407,7 +407,7 @@ class PocketCastsSettingTab extends PluginSettingTab {
 			);
 			if (podcasts.length === 0) {
 				podcastListEl.createEl("p", {
-					text: 'No podcasts loaded yet. Click "Load podcasts" above.',
+					text: 'No podcasts loaded yet. Click "load podcasts" above.',
 					cls: "pocketcasts-loading",
 				});
 				return;
