@@ -125,7 +125,7 @@ class PocketCastsView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Pocket Casts history";
+		return "Listening history";
 	}
 
 	getIcon(): string {
@@ -189,7 +189,7 @@ class PocketCastsView extends ItemView {
 
 		// Header
 		const header = contentEl.createDiv({ cls: "pocketcasts-header" });
-		header.createEl("h2", { text: "Pocket Casts" });
+		header.createEl("h2", { text: "Listening history" });
 
 		const controls = header.createDiv({ cls: "pocketcasts-controls" });
 		const refreshBtn = controls.createEl("button", { text: "Refresh" });
@@ -311,11 +311,11 @@ class PocketCastsSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-		new Setting(containerEl).setName("Pocket Casts sync").setHeading();
+		new Setting(containerEl).setName("Account").setHeading();
 
 		new Setting(containerEl)
 			.setName("Email")
-			.setDesc("Your Pocket Casts account email.")
+			.setDesc("Your account email.")
 			.addText(text =>
 				text
 					.setPlaceholder(DEFAULT_EMAIL_PLACEHOLDER)
@@ -329,7 +329,7 @@ class PocketCastsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Password")
-			.setDesc("Your Pocket Casts account password.")
+			.setDesc("Your account password.")
 			.addText(text => {
 				text.inputEl.type = "password";
 				text
@@ -449,7 +449,7 @@ class PocketCastsSettingTab extends PluginSettingTab {
 						try {
 							const { email, password } = this.plugin.settings;
 							if (!email || !password) {
-								new Notice("Configure your Pocket Casts credentials first.");
+								new Notice("Configure your credentials in settings first.");
 								return;
 							}
 							if (!this.plugin.settings.token) {
@@ -501,7 +501,7 @@ export default class PocketCastsPlugin extends Plugin {
 
 		this.registerView(VIEW_TYPE_POCKETCASTS, leaf => new PocketCastsView(leaf, this));
 
-		this.addRibbonIcon("headphones", "Pocket Casts history", () => {
+		this.addRibbonIcon("headphones", "Open listening history", () => {
 			void this.activateView();
 		});
 

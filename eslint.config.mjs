@@ -14,7 +14,7 @@ export default defineConfig([
     },
     rules: {
       ...obsidianmd.configs.recommended,
-      "obsidianmd/ui/sentence-case": ["error", { brands: ["Pocket Casts"] }],
+      "obsidianmd/ui/sentence-case": "error",
     },
   },
   {
