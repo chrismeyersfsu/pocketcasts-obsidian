@@ -6,4 +6,7 @@ module.exports = {
 	moduleNameMapper: {
 		"^obsidian$": "<rootDir>/__mocks__/obsidian.ts",
 	},
+	collectCoverage: true,
+	coverageReporters: ["lcov", "text-summary"],
+	coverageDirectory: "coverage",
 };
